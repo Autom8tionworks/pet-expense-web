@@ -1,7 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "api/generate.py": { "includeFiles": "api/**" },
-    "api/scan.py": { "includeFiles": "api/**" }
-  }
+    "api/*.py": {
+      "runtime": "python3.12",
+      "includeFiles": "api/**"
+    }
+  },
+  "buildCommand": "pip install -r requirements.txt"
 }

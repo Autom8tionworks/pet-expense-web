@@ -173,6 +173,7 @@ const PER_DIEM = ["No Per Diem","Full Day","Partial Day","Full Day, Deduct 1 Mea
   "Full Day, Deduct 2 Meals","Partial Day, Deduct 1 Meal","Partial Day, Deduct 2 Meals"];
 
 let reportType = "job";
+let scannedReceipts = [];   // {image_base64, vendor, date, amount, category, confidence}
 
 // ---------- row field configs ----------
 const CONFIGS = {
@@ -308,6 +309,7 @@ document.getElementById("scanBtn").addEventListener("click",async()=>{
       if(j.configured===false){status.innerHTML="⚠️ "+j.message;btn.disabled=false;return;}
       if(j.error){notes.push(`${files[i].name}: failed`);continue;}
       addScanned(j);
+      scannedReceipts.push({image_base64:b64,vendor:j.vendor||"",date:j.date||"",amount:j.amount,category:j.category||"",confidence:j.confidence});
       const conf=Math.round((j.confidence||0)*100);
       if(conf<60) anyLow=true;
       notes.push(`<b>${j.vendor||files[i].name}</b> $${j.amount||0} <span class="badge ${conf<60?"low":"ok"}">${conf}%</span>`);
@@ -370,6 +372,7 @@ document.getElementById("generateBtn").addEventListener("click",async()=>{
       credit_card_charges:collectSection("off_cc"),
     });
   }
+  payload.receipts=scannedReceipts;
   const btn=document.getElementById("generateBtn");
   btn.disabled=true;btn.textContent="Generating…";
   try{

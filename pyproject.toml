@@ -1,2 +1,2 @@
 [tool.vercel]
-entrypoint = "api/generate.py"
+entrypoint = "api.generate:handler"

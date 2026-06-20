@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PET Terra Systems — Expense Report</title>
+<title>PET Systems — Expense Report</title>
 <style>
   :root{
     --bg:#f4f6f9; --card:#fff; --ink:#1c2430; --muted:#6b7785;
@@ -18,8 +18,7 @@
   header.app .wrap{max-width:980px;margin:0 auto;display:flex;align-items:center;gap:12px;}
   header.app h1{font-size:18px;margin:0;font-weight:650;letter-spacing:.2px}
   header.app p{margin:2px 0 0;font-size:12.5px;opacity:.85}
-  .logo{width:38px;height:38px;border-radius:9px;background:#fff;color:#0b5cad;
-    display:grid;place-items:center;font-weight:800;font-size:13px;letter-spacing:.5px}
+  .logo{height:46px;width:auto;border-radius:8px;background:#fff;padding:4px 7px;box-shadow:var(--shadow);display:block}
   main{max-width:980px;margin:18px auto 80px;padding:0 14px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
     box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
@@ -66,9 +65,9 @@
 <body>
 <header class="app">
   <div class="wrap">
-    <div class="logo">PTS</div>
+    <img class="logo" src="/logo.png" alt="PET Systems logo">
     <div>
-      <h1>PET Terra Systems — Expense Report</h1>
+      <h1>PET Systems</h1>
       <p>Fill it in, download the completed Excel file. No login required.</p>
     </div>
   </div>
@@ -108,12 +107,12 @@
 
   <!-- Receipt scan -->
   <div class="card">
-    <h2>Scan a receipt <span class="sub">Claude vision</span></h2>
+    <h2>Scan receipts <span class="sub">Claude vision</span></h2>
     <div class="scanbox">
-      <input id="receiptFile" type="file" accept="image/*" capture="environment">
-      <button class="btn ghost" id="scanBtn" type="button">Scan receipt</button>
+      <input id="receiptFile" type="file" accept="image/*" multiple>
+      <button class="btn ghost" id="scanBtn" type="button">Scan receipts</button>
     </div>
-    <div id="scanStatus" class="hint">Take a photo or choose an image. It will be read and added as a line item below for you to review.</div>
+    <div id="scanStatus" class="hint">Choose or photograph one or more receipts. Each is read and added as a line item below for you to review.</div>
   </div>
 
   <!-- JOB sections -->
@@ -293,23 +292,31 @@ function downscale(file){
 }
 
 document.getElementById("scanBtn").addEventListener("click",async()=>{
-  const f=document.getElementById("receiptFile").files[0];
+  const files=[...document.getElementById("receiptFile").files];
   const status=document.getElementById("scanStatus");
-  if(!f){status.textContent="Choose or take a photo of a receipt first.";return;}
-  status.textContent="Reading receipt with Claude…";
-  try{
-    const b64=await downscale(f);
-    const r=await fetch("/api/scan",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({image_base64:b64,media_type:"image/jpeg",report_type:reportType})});
-    const j=await r.json();
-    if(j.configured===false){status.innerHTML="⚠️ "+j.message;return;}
-    if(j.error){status.textContent="Scan failed: "+j.error;return;}
-    addScanned(j);
-    const conf=Math.round((j.confidence||0)*100);
-    status.innerHTML=`Added: <b>${j.vendor||"receipt"}</b> — $${j.amount||0} `+
-      `<span class="badge ${conf<60?"low":"ok"}">${conf}% confidence</span>`+
-      (conf<60?" — please review the highlighted row.":"");
-  }catch(err){status.textContent="Scan error: "+err.message;}
+  const btn=document.getElementById("scanBtn");
+  if(!files.length){status.textContent="Choose or photograph one or more receipts first.";return;}
+  btn.disabled=true;
+  let added=0; const notes=[]; let anyLow=false;
+  for(let i=0;i<files.length;i++){
+    status.textContent=`Reading receipt ${i+1} of ${files.length} with Claude…`;
+    try{
+      const b64=await downscale(files[i]);
+      const r=await fetch("/api/scan",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({image_base64:b64,media_type:"image/jpeg",report_type:reportType})});
+      const j=await r.json();
+      if(j.configured===false){status.innerHTML="⚠️ "+j.message;btn.disabled=false;return;}
+      if(j.error){notes.push(`${files[i].name}: failed`);continue;}
+      addScanned(j);
+      const conf=Math.round((j.confidence||0)*100);
+      if(conf<60) anyLow=true;
+      notes.push(`<b>${j.vendor||files[i].name}</b> $${j.amount||0} <span class="badge ${conf<60?"low":"ok"}">${conf}%</span>`);
+      added++;
+    }catch(err){notes.push(`${files[i].name}: error`);}
+  }
+  status.innerHTML=`Added ${added} of ${files.length} receipt(s): `+notes.join(" &nbsp;&middot;&nbsp; ")+
+    (anyLow?" — please review the highlighted rows.":"");
+  btn.disabled=false;
 });
 
 function addScanned(j){

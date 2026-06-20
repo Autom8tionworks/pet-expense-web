@@ -106,13 +106,14 @@ def build_office(data: dict) -> OfficeSubmission:
 def generate_xlsx(data: dict) -> tuple[str, bytes]:
     """Return (filename, xlsx_bytes) for the given submission dict."""
     rtype = (data.get("report_type") or "job").lower()
+    receipts = [r for r in (data.get("receipts") or []) if r.get("image_base64")]
     buf = io.BytesIO()
     if rtype == "office":
         sub = build_office(data)
-        fill_office_report(sub, OFF_TPL, buf, datetime.now())
+        fill_office_report(sub, OFF_TPL, buf, datetime.now(), receipts=receipts)
         fname = f"Office_Expense_{_safe(sub.submitter_name)}.xlsx"
     else:
         sub = build_job(data)
-        fill_job_report(sub, JOB_TPL, buf, datetime.now())
+        fill_job_report(sub, JOB_TPL, buf, datetime.now(), receipts=receipts)
         fname = f"Travel_Expense_{_safe(sub.submitter_name)}_{_safe(sub.job_number)}.xlsx"
     return fname, buf.getvalue()

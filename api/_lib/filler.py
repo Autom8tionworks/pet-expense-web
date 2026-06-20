@@ -12,11 +12,16 @@ Design choices that matter:
 """
 from __future__ import annotations
 
+import base64
+import io
 from dataclasses import dataclass, field
 from datetime import datetime
 from openpyxl import load_workbook
 from openpyxl.cell.cell import MergedCell
+from openpyxl.drawing.image import Image as XLImage
+from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.worksheet.properties import PageSetupProperties
 
 from .model import JobSubmission, OfficeSubmission, ReportType
 from .rows import expand_rows
@@ -52,11 +57,85 @@ class FillResult:
     cells: dict          # logical name -> A1 coordinate (post-expansion)
 
 
+
+# --------------------------------------------------------------------------- #
+# Receipts worksheet
+# --------------------------------------------------------------------------- #
+def add_receipts_sheet(wb, receipts) -> None:
+    """Append a 'Receipts' sheet: each receipt image with a caption that mirrors
+    its line entry, so accounting can inspect images against the report rows.
+
+    `receipts` is a list of dicts: image_base64, vendor, date, amount, category,
+    confidence. Images are embedded at ~480px wide (full-res bytes retained, so
+    clicking to enlarge in Excel shows detail). Requires Pillow (openpyxl reads
+    image dimensions via PIL)."""
+    if not receipts:
+        return
+    ws = wb.create_sheet("Receipts")
+    ws.sheet_view.showGridLines = False
+    ws.column_dimensions["A"].width = 3
+    ws.column_dimensions["B"].width = 70
+    # Print cleanly: scale to one page wide, allow multiple pages tall.
+    ws.page_setup.orientation = "portrait"
+    ws.page_setup.fitToWidth = 1
+    ws.page_setup.fitToHeight = 0
+    ws.sheet_properties.pageSetUpPr = PageSetupProperties(fitToPage=True)
+    ws.print_options.horizontalCentered = False
+
+    title = ws.cell(row=1, column=2, value="RECEIPTS — inspect each image against the matching report entry")
+    title.font = Font(bold=True, size=14, color="0B5CAD")
+    note = ws.cell(row=2, column=2,
+                   value="Each receipt below is labelled with the entry it was scanned into "
+                         "(date / category / vendor / amount). Click an image to enlarge.")
+    note.font = Font(size=10, italic=True, color="6B7785")
+
+    row = 4
+    cap_fill = PatternFill("solid", fgColor="EAF1FA")
+    for i, rc in enumerate(receipts, 1):
+        amt = rc.get("amount", "")
+        try:
+            amt = f"{float(amt):,.2f}"
+        except (TypeError, ValueError):
+            amt = str(amt)
+        conf = rc.get("confidence")
+        conf_txt = f"  ·  scan {round(float(conf) * 100)}%" if conf not in (None, "") else ""
+        caption = (f"R{i}    {rc.get('date','') or '(no date)'}    |    "
+                   f"{(rc.get('category','') or '').replace('_',' ')}    |    "
+                   f"{rc.get('vendor','') or '(vendor?)'}    |    ${amt}{conf_txt}")
+        cell = ws.cell(row=row, column=2, value=caption)
+        cell.font = Font(bold=True, size=11)
+        cell.fill = cap_fill
+        cell.alignment = Alignment(vertical="center")
+        ws.row_dimensions[row].height = 20
+        row += 1
+
+        img_row = row
+        placed = False
+        try:
+            raw = base64.b64decode(rc.get("image_base64", ""))
+            if raw:
+                img = XLImage(io.BytesIO(raw))
+                maxw = 480
+                if img.width and img.width > maxw:
+                    img.height = int(img.height * (maxw / img.width))
+                    img.width = maxw
+                ws.add_image(img, f"B{img_row}")
+                rows_tall = max(2, int((img.height or 360) / 18) + 2)
+                placed = True
+        except Exception as e:  # noqa: BLE001 - never let a bad image break the file
+            ws.cell(row=img_row, column=2,
+                    value=f"[could not embed image: {e}]").font = Font(color="C0392B")
+            rows_tall = 2
+        if not placed and "rows_tall" not in dir():
+            rows_tall = 2
+        row += rows_tall + 1
+
+
 # --------------------------------------------------------------------------- #
 # JOB report  ->  2026_DomTravelER.xlsx
 # --------------------------------------------------------------------------- #
 def fill_job_report(sub: JobSubmission, template_path: str, out_path: str,
-                    generated_at: datetime | None = None) -> str:
+                    generated_at: datetime | None = None, receipts=None) -> str:
     errs = sub.validate()
     if errs:
         raise ValueError("Invalid job submission: " + "; ".join(errs))
@@ -206,6 +285,7 @@ def fill_job_report(sub: JobSubmission, template_path: str, out_path: str,
     # ---- electronic signature (no approval step) ----
     ws.cell(f(SIG_ROW), _col("G")).value = _sig_text(sub.submitter_name, when)
 
+    add_receipts_sheet(wb, receipts)
     wb.save(out_path)
     return FillResult(out_path, ws.title, {
         "total_s1": f"F{f(TOT_S1)}", "total_s2": f"F{f(TOT_S2)}",
@@ -218,7 +298,7 @@ def fill_job_report(sub: JobSubmission, template_path: str, out_path: str,
 # OFFICE report  ->  2026_OER.xlsx
 # --------------------------------------------------------------------------- #
 def fill_office_report(sub: OfficeSubmission, template_path: str, out_path: str,
-                       generated_at: datetime | None = None) -> str:
+                       generated_at: datetime | None = None, receipts=None) -> str:
     errs = sub.validate()
     if errs:
         raise ValueError("Invalid office submission: " + "; ".join(errs))
@@ -317,6 +397,7 @@ def fill_office_report(sub: OfficeSubmission, template_path: str, out_path: str,
     # ---- electronic signature ----
     ws.cell(f(SIG_ROW), _col("F")).value = _sig_text(sub.submitter_name, when)
 
+    add_receipts_sheet(wb, receipts)
     wb.save(out_path)
     return FillResult(out_path, ws.title, {
         "total_s1": f"E{f(TOT_S1)}", "total_s2": f"E{f(TOT_S2)}",
@@ -327,7 +408,7 @@ def fill_office_report(sub: OfficeSubmission, template_path: str, out_path: str,
 # --------------------------------------------------------------------------- #
 # dispatcher
 # --------------------------------------------------------------------------- #
-def fill_report(sub, template_path: str, out_path: str, generated_at=None) -> str:
+def fill_report(sub, template_path: str, out_path: str, generated_at=None, receipts=None) -> str:
     if isinstance(sub, JobSubmission) or getattr(sub, "report_type", None) == ReportType.JOB:
-        return fill_job_report(sub, template_path, out_path, generated_at)
-    return fill_office_report(sub, template_path, out_path, generated_at)
+        return fill_job_report(sub, template_path, out_path, generated_at, receipts)
+    return fill_office_report(sub, template_path, out_path, generated_at, receipts)

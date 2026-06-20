@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PET Terra Systems — Expense Report</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#fff; --ink:#1c2430; --muted:#6b7785;
+    --line:#dde3ea; --brand:#0b5cad; --brand-dark:#08498a;
+    --accent:#0b5cad; --ok:#1c8a4d; --warn:#b9851b; --warnbg:#fff6e0; --danger:#c0392b;
+    --radius:12px; --shadow:0 1px 3px rgba(20,30,50,.08),0 6px 18px rgba(20,30,50,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  header.app{background:linear-gradient(135deg,#0b5cad,#08498a);color:#fff;padding:18px 16px;}
+  header.app .wrap{max-width:980px;margin:0 auto;display:flex;align-items:center;gap:12px;}
+  header.app h1{font-size:18px;margin:0;font-weight:650;letter-spacing:.2px}
+  header.app p{margin:2px 0 0;font-size:12.5px;opacity:.85}
+  .logo{width:38px;height:38px;border-radius:9px;background:#fff;color:#0b5cad;
+    display:grid;place-items:center;font-weight:800;font-size:13px;letter-spacing:.5px}
+  main{max-width:980px;margin:18px auto 80px;padding:0 14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:16px;margin-bottom:16px}
+  .card h2{font-size:14px;margin:0 0 12px;text-transform:uppercase;letter-spacing:.6px;color:var(--brand)}
+  .card h2 .sub{float:right;text-transform:none;letter-spacing:0;color:var(--muted);font-weight:400;font-size:12px}
+  label{display:block;font-size:12px;color:var(--muted);margin:0 0 4px;font-weight:600}
+  input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;
+    font:inherit;background:#ffff;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(11,92,173,.12)}
+  .grid{display:grid;gap:12px}
+  .g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}
+  @media(max-width:640px){.g2,.g3{grid-template-columns:1fr}}
+  .seg{display:inline-flex;background:#e9eef4;border-radius:10px;padding:3px;gap:3px}
+  .seg button{border:0;background:transparent;padding:8px 16px;border-radius:8px;font-weight:600;color:var(--muted);cursor:pointer}
+  .seg button.on{background:#fff;color:var(--brand);box-shadow:var(--shadow)}
+  .row{display:grid;gap:8px;align-items:end;border:1px solid var(--line);border-radius:10px;
+    padding:10px;margin-bottom:8px;position:relative;background:#fcfdfe}
+  .row.lowconf{border-color:#e6c46a;background:var(--warnbg)}
+  .row .del{position:absolute;top:8px;right:8px;border:0;background:#f1f3f6;color:var(--muted);
+    width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:15px;line-height:1}
+  .row .del:hover{background:#ffe2dd;color:var(--danger)}
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
+  .badge.low{background:#f6e2b3;color:#8a6300}.badge.ok{background:#d6f0e0;color:#15693a}
+  .btn{border:0;border-radius:10px;padding:11px 16px;font-weight:650;cursor:pointer;font-size:14px}
+  .btn.primary{background:var(--brand);color:#fff}.btn.primary:hover{background:var(--brand-dark)}
+  .btn.ghost{background:#eef2f7;color:var(--brand)}
+  .btn.add{background:#eef2f7;color:var(--brand);width:100%;border:1px dashed #b9cbe0}
+  .btn:disabled{opacity:.55;cursor:not-allowed}
+  .hint{font-size:12px;color:var(--muted);margin:6px 0 0}
+  .scanbox{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .scanbox input[type=file]{flex:1;min-width:180px}
+  #scanStatus{font-size:13px;margin-top:8px}
+  .req{color:var(--danger)}
+  .footerbar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);
+    padding:10px 14px;box-shadow:0 -3px 12px rgba(20,30,50,.06)}
+  .footerbar .wrap{max-width:980px;margin:0 auto;display:flex;gap:12px;align-items:center;justify-content:space-between}
+  .colhint{font-size:11px;color:var(--muted);margin-bottom:6px}
+  .fieldnum input{text-align:right}
+  .hide{display:none!important}
+  .small{font-size:12px}
+  .totalpill{font-weight:700;color:var(--brand)}
+</style>
+</head>
+<body>
+<header class="app">
+  <div class="wrap">
+    <div class="logo">PTS</div>
+    <div>
+      <h1>PET Terra Systems — Expense Report</h1>
+      <p>Fill it in, download the completed Excel file. No login required.</p>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- Report type -->
+  <div class="card">
+    <h2>Report type</h2>
+    <div class="seg" id="typeSeg">
+      <button type="button" data-type="job" class="on">Domestic Travel (Job)</button>
+      <button type="button" data-type="office">Office</button>
+    </div>
+  </div>
+
+  <!-- Employee / header -->
+  <div class="card">
+    <h2>Employee &amp; report info</h2>
+    <div class="grid g2">
+      <div><label>Employee name <span class="req">*</span></label><input id="submitter_name" placeholder="Full name"></div>
+      <div class="jobonly"><label>PET Job no. <span class="req">*</span></label><input id="job_number" placeholder="e.g. J-2026-0412"></div>
+      <div class="officeonly hide"><label>Report date</label><input id="report_date" type="date"></div>
+    </div>
+    <div class="jobonly">
+      <div class="grid g2" style="margin-top:12px">
+        <div><label>Customer name &amp; state</label><input id="customer_name_state"></div>
+        <div><label>Customer contact</label><input id="customer_contact"></div>
+        <div><label>Customer P.O. no.</label><input id="customer_po"></div>
+        <div><label>Customer billing address</label><input id="customer_billing_address"></div>
+        <div><label>Overnight travel</label>
+          <select id="overnight_travel"><option value="">—</option><option>Yes</option><option>No</option></select></div>
+        <div class="fieldnum"><label>Days traveled</label><input id="days_traveled" type="number" min="0" step="1"></div>
+      </div>
+      <div style="margin-top:12px"><label>Project description</label><textarea id="project_description" rows="2"></textarea></div>
+    </div>
+  </div>
+
+  <!-- Receipt scan -->
+  <div class="card">
+    <h2>Scan a receipt <span class="sub">Claude vision</span></h2>
+    <div class="scanbox">
+      <input id="receiptFile" type="file" accept="image/*" capture="environment">
+      <button class="btn ghost" id="scanBtn" type="button">Scan receipt</button>
+    </div>
+    <div id="scanStatus" class="hint">Take a photo or choose an image. It will be read and added as a line item below for you to review.</div>
+  </div>
+
+  <!-- JOB sections -->
+  <div class="jobonly">
+    <div class="card">
+      <h2>1 — Use of personal car <span class="sub">mileage @ $0.68/mi</span></h2>
+      <div id="job_mileage"></div>
+      <button class="btn add" type="button" data-add="job_mileage">+ Add mileage row</button>
+      <div class="grid g2" style="margin-top:12px">
+        <div class="fieldnum"><label>Round-trip daily commute mileage</label><input id="commute_miles" type="number" min="0" step="0.1" placeholder="0"></div>
+        <div class="fieldnum"><label># of commute days (offset)</label><input id="commute_days" type="number" min="0" step="1" placeholder="0"></div>
+      </div>
+      <p class="hint">The commute offset (RT miles × days) is subtracted from reimbursable mileage.</p>
+    </div>
+
+    <div class="card">
+      <h2>2 — Travel expenses <span class="sub">meals auto-calc from per diem</span></h2>
+      <div id="job_expenses"></div>
+      <button class="btn add" type="button" data-add="job_expenses">+ Add expense day</button>
+    </div>
+
+    <div class="card">
+      <h2>3 — Miscellaneous expenses</h2>
+      <div id="job_misc"></div>
+      <button class="btn add" type="button" data-add="job_misc">+ Add misc expense</button>
+    </div>
+  </div>
+
+  <!-- OFFICE sections -->
+  <div class="officeonly hide">
+    <div class="card">
+      <h2>1 — Use of personal car <span class="sub">mileage @ $0.68/mi</span></h2>
+      <div id="off_mileage"></div>
+      <button class="btn add" type="button" data-add="off_mileage">+ Add mileage row</button>
+    </div>
+    <div class="card">
+      <h2>2 — Office expenses</h2>
+      <div id="off_expenses"></div>
+      <button class="btn add" type="button" data-add="off_expenses">+ Add office expense</button>
+    </div>
+    <div class="card">
+      <h2>3 — Charged on credit card / open accounts</h2>
+      <div id="off_cc"></div>
+      <button class="btn add" type="button" data-add="off_cc">+ Add credit-card charge</button>
+    </div>
+  </div>
+</main>
+
+<div class="footerbar">
+  <div class="wrap">
+    <div class="small">Reviewing your own entries is the only approval step.</div>
+    <button class="btn primary" id="generateBtn" type="button">Download Excel ⬇</button>
+  </div>
+</div>
+
+<script>
+const PER_DIEM = ["No Per Diem","Full Day","Partial Day","Full Day, Deduct 1 Meal",
+  "Full Day, Deduct 2 Meals","Partial Day, Deduct 1 Meal","Partial Day, Deduct 2 Meals"];
+
+let reportType = "job";
+
+// ---------- row field configs ----------
+const CONFIGS = {
+  job_mileage: [
+    {k:"date",label:"Date",type:"date",w:"1fr"},
+    {k:"origin",label:"From",type:"text",w:"1.4fr"},
+    {k:"destination",label:"To",type:"text",w:"1.4fr"},
+    {k:"miles",label:"Miles",type:"number",w:".8fr",num:true},
+  ],
+  job_expenses: [
+    {k:"date",label:"Date",type:"date",w:"1fr"},
+    {k:"per_diem",label:"Per diem",type:"select",opts:PER_DIEM,w:"1.6fr"},
+    {k:"airfare",label:"Airfare",type:"number",num:true},
+    {k:"ground_transport",label:"Ground transport",type:"number",num:true},
+    {k:"car_rental_gas",label:"Car rental / gas",type:"number",num:true},
+    {k:"lodging",label:"Lodging",type:"number",num:true},
+    {k:"telephone_fax",label:"Telephone / fax",type:"number",num:true},
+    {k:"parking",label:"Parking",type:"number",num:true},
+    {k:"misc",label:"Misc.",type:"number",num:true},
+  ],
+  job_misc: [
+    {k:"date",label:"Date",type:"date",w:"1fr"},
+    {k:"description",label:"Description",type:"text",w:"2.4fr"},
+    {k:"amount",label:"Amount",type:"number",w:"1fr",num:true},
+  ],
+  off_mileage: [
+    {k:"date",label:"Date",type:"date",w:"1fr"},
+    {k:"origin",label:"From",type:"text",w:"1.4fr"},
+    {k:"destination",label:"To",type:"text",w:"1.4fr"},
+    {k:"miles",label:"Miles",type:"number",w:".8fr",num:true},
+  ],
+  off_expenses: [
+    {k:"date",label:"Date",type:"date",w:"1fr"},
+    {k:"description",label:"Description",type:"text",w:"2.4fr"},
+    {k:"cost",label:"Cost",type:"number",w:"1fr",num:true},
+  ],
+  off_cc: [
+    {k:"date",label:"Date",type:"date",w:"1fr"},
+    {k:"vendor",label:"Vendor",type:"text",w:"1.3fr"},
+    {k:"description",label:"Description",type:"text",w:"1.6fr"},
+    {k:"amount",label:"Amount",type:"number",w:"1fr",num:true},
+  ],
+};
+
+function makeRow(section, values){
+  values = values || {};
+  const cfg = CONFIGS[section];
+  const row = document.createElement("div");
+  row.className = "row";
+  const cols = cfg.map(f=>f.w||"1fr").join(" ");
+  row.style.gridTemplateColumns = window.innerWidth>640 ? cols : "1fr";
+  cfg.forEach(f=>{
+    const cell = document.createElement("div");
+    if(f.num) cell.className="fieldnum";
+    const lab = document.createElement("label"); lab.textContent=f.label; cell.appendChild(lab);
+    let inp;
+    if(f.type==="select"){
+      inp=document.createElement("select");
+      f.opts.forEach(o=>{const op=document.createElement("option");op.value=o;op.textContent=o;inp.appendChild(op);});
+    } else {
+      inp=document.createElement("input"); inp.type=f.type;
+      if(f.type==="number"){inp.step="0.01";inp.min="0";inp.placeholder="0.00";}
+    }
+    inp.dataset.k=f.k;
+    if(values[f.k]!=null && values[f.k]!=="") inp.value=values[f.k];
+    cell.appendChild(inp); row.appendChild(cell);
+  });
+  const del=document.createElement("button");
+  del.className="del";del.type="button";del.textContent="×";
+  del.onclick=()=>row.remove();
+  row.appendChild(del);
+  document.getElementById(section).appendChild(row);
+  return row;
+}
+
+function collectSection(section){
+  const rows=[...document.querySelectorAll("#"+section+" .row")];
+  return rows.map(r=>{
+    const o={};
+    r.querySelectorAll("[data-k]").forEach(i=>o[i.dataset.k]=i.value);
+    return o;
+  });
+}
+
+// ---------- report type toggle ----------
+document.getElementById("typeSeg").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  reportType=b.dataset.type;
+  [...document.querySelectorAll("#typeSeg button")].forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".jobonly").forEach(x=>x.classList.toggle("hide",reportType!=="job"));
+  document.querySelectorAll(".officeonly").forEach(x=>x.classList.toggle("hide",reportType!=="office"));
+});
+
+// ---------- add-row buttons ----------
+document.querySelectorAll("[data-add]").forEach(btn=>{
+  btn.addEventListener("click",()=>makeRow(btn.dataset.add));
+});
+
+// seed a starting row in each section
+["job_mileage","job_expenses","job_misc","off_mileage","off_expenses","off_cc"].forEach(s=>makeRow(s));
+
+// ---------- receipt scan ----------
+function downscale(file){
+  return new Promise((res,rej)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const max=1600; let {width:w,height:h}=img;
+      if(w>max||h>max){const s=Math.min(max/w,max/h);w=Math.round(w*s);h=Math.round(h*s);}
+      const c=document.createElement("canvas");c.width=w;c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      const dataURL=c.toDataURL("image/jpeg",0.82);
+      res(dataURL.split(",")[1]);
+    };
+    img.onerror=rej;
+    img.src=URL.createObjectURL(file);
+  });
+}
+
+document.getElementById("scanBtn").addEventListener("click",async()=>{
+  const f=document.getElementById("receiptFile").files[0];
+  const status=document.getElementById("scanStatus");
+  if(!f){status.textContent="Choose or take a photo of a receipt first.";return;}
+  status.textContent="Reading receipt with Claude…";
+  try{
+    const b64=await downscale(f);
+    const r=await fetch("/api/scan",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({image_base64:b64,media_type:"image/jpeg",report_type:reportType})});
+    const j=await r.json();
+    if(j.configured===false){status.innerHTML="⚠️ "+j.message;return;}
+    if(j.error){status.textContent="Scan failed: "+j.error;return;}
+    addScanned(j);
+    const conf=Math.round((j.confidence||0)*100);
+    status.innerHTML=`Added: <b>${j.vendor||"receipt"}</b> — $${j.amount||0} `+
+      `<span class="badge ${conf<60?"low":"ok"}">${conf}% confidence</span>`+
+      (conf<60?" — please review the highlighted row.":"");
+  }catch(err){status.textContent="Scan error: "+err.message;}
+});
+
+function addScanned(j){
+  const amt=j.amount||"";
+  const date=j.date||"";
+  if(reportType==="office"){
+    if(j.category==="credit_card"){
+      const row=makeRow("off_cc",{date,vendor:j.vendor||"",amount:amt});
+      flag(row,j.confidence);
+    } else {
+      const row=makeRow("off_expenses",{date,description:j.vendor||"",cost:amt});
+      flag(row,j.confidence);
+    }
+  } else {
+    const cat=["airfare","ground_transport","car_rental_gas","lodging","telephone_fax","parking","misc"]
+      .includes(j.category)?j.category:"misc";
+    const vals={date,per_diem:"No Per Diem"}; vals[cat]=amt;
+    const row=makeRow("job_expenses",vals);
+    flag(row,j.confidence);
+  }
+}
+function flag(row,conf){ if((conf||0)<0.6) row.classList.add("lowconf"); row.scrollIntoView({behavior:"smooth",block:"center"});}
+
+// ---------- generate / download ----------
+document.getElementById("generateBtn").addEventListener("click",async()=>{
+  const name=document.getElementById("submitter_name").value.trim();
+  if(!name){alert("Employee name is required.");return;}
+  let payload={report_type:reportType,submitter_name:name};
+  if(reportType==="job"){
+    const jn=document.getElementById("job_number").value.trim();
+    if(!jn){alert("Job number is required for a Job report.");return;}
+    Object.assign(payload,{
+      job_number:jn,
+      customer_name_state:val("customer_name_state"),
+      customer_contact:val("customer_contact"),
+      customer_po:val("customer_po"),
+      customer_billing_address:val("customer_billing_address"),
+      overnight_travel:val("overnight_travel"),
+      days_traveled:val("days_traveled"),
+      project_description:val("project_description"),
+      mileage:collectSection("job_mileage"),
+      commute:{rt_commute_miles:val("commute_miles"),num_days:val("commute_days")},
+      expenses:collectSection("job_expenses"),
+      misc_expenses:collectSection("job_misc"),
+    });
+  } else {
+    Object.assign(payload,{
+      report_date:val("report_date"),
+      mileage:collectSection("off_mileage"),
+      office_expenses:collectSection("off_expenses"),
+      credit_card_charges:collectSection("off_cc"),
+    });
+  }
+  const btn=document.getElementById("generateBtn");
+  btn.disabled=true;btn.textContent="Generating…";
+  try{
+    const r=await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    if(!r.ok){const e=await r.json().catch(()=>({error:r.statusText}));throw new Error(e.error||"failed");}
+    const blob=await r.blob();
+    const cd=r.headers.get("Content-Disposition")||"";
+    const m=cd.match(/filename="?([^"]+)"?/);
+    const fname=m?m[1]:"expense_report.xlsx";
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();
+    URL.revokeObjectURL(url);
+    btn.textContent="Downloaded ✓";
+    setTimeout(()=>{btn.textContent="Download Excel ⬇";btn.disabled=false;},1800);
+  }catch(err){alert("Could not generate file: "+err.message);btn.textContent="Download Excel ⬇";btn.disabled=false;}
+});
+function val(id){const e=document.getElementById(id);return e?e.value:"";}
+</script>
+</body>
+</html>

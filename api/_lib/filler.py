@@ -61,6 +61,27 @@ class FillResult:
 # --------------------------------------------------------------------------- #
 # Receipts worksheet
 # --------------------------------------------------------------------------- #
+def _receipt_image_bytes(rc):
+    """Return raster image bytes for a receipt. Images are used as-is; PDFs are
+    rendered (page 1) to a JPEG via pypdfium2 so they can be embedded in Excel."""
+    raw = base64.b64decode(rc.get("image_base64", "") or "")
+    if not raw:
+        return b""
+    mt = (rc.get("media_type") or "").lower()
+    is_pdf = mt == "application/pdf" or rc.get("pdf") or raw[:5] == b"%PDF-"
+    if not is_pdf:
+        return raw
+    import pypdfium2 as pdfium  # lazy: only needed when a PDF receipt is present
+    from PIL import Image  # noqa: F401
+    pdf = pdfium.PdfDocument(raw)
+    pil = pdf[0].render(scale=2).to_pil().convert("RGB")
+    maxw = 1000
+    if pil.width > maxw:
+        pil = pil.resize((maxw, round(pil.height * maxw / pil.width)))
+    buf = io.BytesIO(); pil.save(buf, "JPEG", quality=85)
+    return buf.getvalue()
+
+
 def add_receipts_sheet(wb, receipts) -> None:
     """Append a 'Receipts' sheet: each receipt image with a caption that mirrors
     its line entry, so accounting can inspect images against the report rows.
@@ -112,7 +133,7 @@ def add_receipts_sheet(wb, receipts) -> None:
         img_row = row
         placed = False
         try:
-            raw = base64.b64decode(rc.get("image_base64", ""))
+            raw = _receipt_image_bytes(rc)
             if raw:
                 img = XLImage(io.BytesIO(raw))
                 maxw = 480

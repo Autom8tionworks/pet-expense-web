@@ -67,16 +67,18 @@ class handler(BaseHTTPRequestHandler):
 
             import anthropic  # imported lazily so generate.py never needs it
             client = anthropic.Anthropic(api_key=api_key)
+            if media_type == "application/pdf":
+                receipt_block = {"type": "document", "source": {
+                    "type": "base64", "media_type": "application/pdf", "data": image_b64}}
+            else:
+                receipt_block = {"type": "image", "source": {
+                    "type": "base64", "media_type": media_type, "data": image_b64}}
             resp = client.messages.create(
                 model=DEFAULT_MODEL,
                 max_tokens=512,
                 messages=[{
                     "role": "user",
-                    "content": [
-                        {"type": "image", "source": {
-                            "type": "base64", "media_type": media_type, "data": image_b64}},
-                        {"type": "text", "text": _prompt(report_type)},
-                    ],
+                    "content": [receipt_block, {"type": "text", "text": _prompt(report_type)}],
                 }],
             )
             text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")

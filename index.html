@@ -30,7 +30,18 @@
   input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(11,92,173,.12)}
   .grid{display:grid;gap:12px}
   .g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}
-  @media(max-width:640px){.g2,.g3{grid-template-columns:1fr}}
+  @media(max-width:680px){
+    .g2,.g3{grid-template-columns:1fr}
+    .row{grid-template-columns:1fr !important; padding-top:10px}
+    .row .del{top:6px;right:6px}
+    .row .move{top:6px;right:34px}
+    main{padding:0 10px}
+    header.app h1{font-size:16px}
+    .footerbar .small{display:none}
+    .footerbar .wrap{justify-content:flex-end}
+    .footerbar .wrap > div{flex:1;justify-content:flex-end}
+    #emailBtn,#generateBtn{flex:1}
+  }
   .seg{display:inline-flex;background:#e9eef4;border-radius:10px;padding:3px;gap:3px}
   .seg button{border:0;background:transparent;padding:8px 16px;border-radius:8px;font-weight:600;color:var(--muted);cursor:pointer}
   .seg button.on{background:#fff;color:var(--brand);box-shadow:var(--shadow)}
@@ -231,7 +242,7 @@ function makeRow(section, values){
   const row = document.createElement("div");
   row.className = "row";
   const cols = cfg.map(f=>f.w||"1fr").join(" ");
-  row.style.gridTemplateColumns = window.innerWidth>640 ? cols : "1fr";
+  row.style.gridTemplateColumns = cols;   // desktop columns; CSS media query stacks them on mobile
   cfg.forEach(f=>{
     const cell = document.createElement("div");
     if(f.num) cell.className="fieldnum";
